@@ -5,6 +5,7 @@ const Admin = require("./models/admin.models");
 const Products = require("./models/product.models");
 const AdminRoutes = require("./routes/admin.routes");
 const ProductRoutes = require("./routes/product.routes");
+const { swaggerUi, swaggerSpec } = require("./utils/swagger.utils");
 
 const PORT = 3000;
 const app = express();
@@ -19,6 +20,9 @@ app.use(
 );
 
 app.use(express.json());
+
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Эндпоинты API
 app.use("/api/admin", AdminRoutes);
