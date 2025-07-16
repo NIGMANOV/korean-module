@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const ProductController = require("../controllers/product.controllers");
+const upload = require("../middlewares/middlewares.upload");
 
 /**
  * @swagger
@@ -54,7 +55,7 @@ const ProductController = require("../controllers/product.controllers");
  *       400:
  *         description: Ошибка валидации
  */
-router.post("/", ProductController.createProduct);
+router.post("/", upload.single("image"), ProductController.createProduct);
 
 /**
  * @swagger

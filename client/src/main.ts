@@ -1,45 +1,48 @@
 import "./style.css";
 
-// Интерфейс Авторизации
+// Интерфейс Авторизации (запрос)
 interface IAuthorization {
   email: string;
   password: string;
-  message: string;
+  message?: string;
 }
 
-// Интерфейс OTP
+// Интерфейс OTP (запрос)
 interface IOtp {
   email: string;
   otp: string;
-  message: string;
+  message?: string;
 }
 
-// Интерфейс Регистрации
+// Интерфейс Регистрации (запрос)
 interface IRegisterData {
   admin_name: string;
   email: string;
   password: string;
-  message: string;
+  message?: string;
 }
 
-// Интерфейс Продукта
+// Интерфейс Локализованных строк (например, для name и description)
 interface ILocalizedString {
   en: string;
   fr: string;
 }
 
+// Интерфейс веса
 interface IWeight {
   gross: number;
   net: number;
   unit: string;
 }
 
+// Интерфейс контактов компании (owner, contact)
 interface ICompanyContact {
   name: string;
   mobileNumber: string;
   email: string;
 }
 
+// Интерфейс компании
 interface ICompany {
   companyName: string;
   companyAddress: string;
@@ -49,6 +52,7 @@ interface ICompany {
   contact: ICompanyContact;
 }
 
+// Интерфейс продукта
 interface IProduct {
   name: ILocalizedString;
   description: ILocalizedString;
@@ -57,6 +61,7 @@ interface IProduct {
   countryOfOrigin: string;
   weight: IWeight;
   company: ICompany;
+  imageUrl?: string;
   message?: string;
 }
 
@@ -272,7 +277,7 @@ function renderDashboard(userEmail: string) {
       <h1 class="text-3xl font-bold mb-4 text-gray-700">Welcome, ${userEmail}!</h1>
       <p class="mb-6 text-gray-600">This is your main dashboard page.</p>
 
-      <form id="product-form" class="bg-white p-6 rounded-xl shadow-md w-full max-w-lg space-y-4 mb-8">
+      <form id="product-form" class="bg-white p-6 rounded-xl shadow-md w-full max-w-lg space-y-4 mb-8" enctype="multipart/form-data">
         <h2 class="text-xl font-bold text-gray-700">Create Product</h2>
         <input type="text" id="gtin" placeholder="GTIN" required class="w-full border p-2 rounded" />
         <input type="text" id="brand" placeholder="Brand" required class="w-full border p-2 rounded" />
@@ -284,6 +289,7 @@ function renderDashboard(userEmail: string) {
         <input type="number" id="gross" placeholder="Weight Gross" required class="w-full border p-2 rounded" />
         <input type="number" id="net" placeholder="Weight Net" required class="w-full border p-2 rounded" />
         <input type="text" id="unit" placeholder="Weight Unit" required class="w-full border p-2 rounded" />
+        <input type="file" id="image" accept="image/*" class="w-full border p-2 rounded" />
         <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md">Add Product</button>
         <div id="product-message" class="text-center text-sm"></div>
       </form>
@@ -319,9 +325,14 @@ function renderDashboard(userEmail: string) {
           const owner = product.company?.owner || {};
           const contact = product.company?.contact || {};
           const company = product.company || {};
+          // Картинка продукта, если есть
+          const imageTag = product.imageUrl
+            ? `<img src="http://localhost:3000${product.imageUrl}" alt="product image" class="max-w-xs mb-2 rounded" />`
+            : "";
 
           return `
             <div class="bg-white p-4 shadow rounded-md border">
+              ${imageTag}
               <h3 class="text-lg font-bold text-gray-800">${
                 product.name?.en || "No name"
               } / ${product.name?.fr || ""}</h3>
@@ -367,67 +378,82 @@ function renderDashboard(userEmail: string) {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const product: IProduct = {
-      gtin: (document.getElementById("gtin") as HTMLInputElement).value.trim(),
-      brand: (
-        document.getElementById("brand") as HTMLInputElement
+    const imageInput = document.getElementById("image") as HTMLInputElement;
+    const file = imageInput.files?.[0];
+
+    // Формируем объект FormData
+    const formData = new FormData();
+
+    // Оборачиваем name и description в JSON строки для передачи вложенных объектов
+    const nameObj = {
+      en: (document.getElementById("name-en") as HTMLInputElement).value.trim(),
+      fr: (document.getElementById("name-fr") as HTMLInputElement).value.trim(),
+    };
+    const descriptionObj = {
+      en: (
+        document.getElementById("desc-en") as HTMLTextAreaElement
       ).value.trim(),
-      countryOfOrigin: (
-        document.getElementById("country") as HTMLInputElement
+      fr: (
+        document.getElementById("desc-fr") as HTMLTextAreaElement
       ).value.trim(),
-      name: {
-        en: (
-          document.getElementById("name-en") as HTMLInputElement
-        ).value.trim(),
-        fr: (
-          document.getElementById("name-fr") as HTMLInputElement
-        ).value.trim(),
-      },
-      description: {
-        en: (
-          document.getElementById("desc-en") as HTMLTextAreaElement
-        ).value.trim(),
-        fr: (
-          document.getElementById("desc-fr") as HTMLTextAreaElement
-        ).value.trim(),
-      },
-      weight: {
-        gross: parseFloat(
-          (document.getElementById("gross") as HTMLInputElement).value
-        ),
-        net: parseFloat(
-          (document.getElementById("net") as HTMLInputElement).value
-        ),
-        unit: (
-          document.getElementById("unit") as HTMLInputElement
-        ).value.trim(),
-      },
-      company: {
-        companyName: "Default Company",
-        companyAddress: "Default Address",
-        companyTelephone: "+00 000 000 000",
-        companyEmail: "example@example.com",
-        owner: {
-          name: "Owner Name",
-          mobileNumber: "+00 111 111 111",
-          email: "owner@example.com",
-        },
-        contact: {
-          name: "Contact Name",
-          mobileNumber: "+00 222 222 222",
-          email: "contact@example.com",
-        },
-      },
+    };
+    const weightObj = {
+      gross: parseFloat(
+        (document.getElementById("gross") as HTMLInputElement).value
+      ),
+      net: parseFloat(
+        (document.getElementById("net") as HTMLInputElement).value
+      ),
+      unit: (document.getElementById("unit") as HTMLInputElement).value.trim(),
     };
 
+    formData.append(
+      "gtin",
+      (document.getElementById("gtin") as HTMLInputElement).value.trim()
+    );
+    formData.append(
+      "brand",
+      (document.getElementById("brand") as HTMLInputElement).value.trim()
+    );
+    formData.append(
+      "countryOfOrigin",
+      (document.getElementById("country") as HTMLInputElement).value.trim()
+    );
+
+    formData.append("name", JSON.stringify(nameObj));
+    formData.append("description", JSON.stringify(descriptionObj));
+    formData.append("weight", JSON.stringify(weightObj));
+
+    // Можно сделать company как в примере (если нужно)
+    const companyObj = {
+      companyName: "Default Company",
+      companyAddress: "Default Address",
+      companyTelephone: "+00 000 000 000",
+      companyEmail: "example@example.com",
+      owner: {
+        name: "Owner Name",
+        mobileNumber: "+00 111 111 111",
+        email: "owner@example.com",
+      },
+      contact: {
+        name: "Contact Name",
+        mobileNumber: "+00 222 222 222",
+        email: "contact@example.com",
+      },
+    };
+    formData.append("company", JSON.stringify(companyObj));
+
+    if (file) {
+      formData.append("image", file);
+    }
+
     try {
-      const res: Response = await fetch("http://localhost:3000/api/products/", {
+      const res = await fetch("http://localhost:3000/api/products/", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(product),
+        body: formData, // Content-Type не ставим, браузер выставит multipart/form-data
       });
 
-      const data: IProduct = await res.json();
+      const data = await res.json();
 
       if (res.ok) {
         message.style.color = "green";

@@ -33,6 +33,10 @@ const Product = sequelize.define("products", {
     type: DataTypes.JSONB,
     allowNull: false,
   },
+  imageUrl: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
 });
 
 module.exports = Product;

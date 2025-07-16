@@ -6,6 +6,7 @@ const Products = require("./models/product.models");
 const AdminRoutes = require("./routes/admin.routes");
 const ProductRoutes = require("./routes/product.routes");
 const { swaggerUi, swaggerSpec } = require("./utils/swagger.utils");
+const path = require("path");
 
 const PORT = 3000;
 const app = express();
@@ -20,7 +21,7 @@ app.use(
 );
 
 app.use(express.json());
-
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
